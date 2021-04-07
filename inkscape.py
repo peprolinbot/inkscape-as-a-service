@@ -14,9 +14,17 @@ app = Flask(__name__)
 
 
 # Convert using Libre Office
-def convert_file(input_file_path, output_dir, output_file_path):
-    call('inkscape --file %s  --export-png %s ' %
-         (input_file_path, output_file_path), shell=True)
+def convert_file(input_file_path, output_dir, output_file_path, width="", height=""):
+    if width == "":
+        width_arg = ""
+    else:
+        width_arg = "-w " + str(width)
+    if height == "":
+        height_arg = ""
+    else:
+        height_arg = "-h " + str(height)
+    call('inkscape %s  -o %s %s %s' %
+         (input_file_path, output_file_path, width_arg, height_arg), shell=True)
 
 
 def allowed_file(filename):
@@ -26,10 +34,11 @@ def allowed_file(filename):
 
 @app.route('/', methods=['GET', 'POST'])
 def api():
+    input_extension = 'svg'
     output_extension = 'png'
     file_name = 'image'
     work_dir = tempfile.TemporaryDirectory()
-    input_file_path = os.path.join(work_dir.name, file_name)
+    input_file_path = os.path.join(work_dir.name, file_name + '.' + input_extension)
     output_file_path = os.path.join(work_dir.name, file_name + '.' + output_extension)
 
     if request.method == 'POST':
@@ -52,7 +61,10 @@ def api():
             shutil.copyfileobj(response.raw, file)
         del response
 
-    convert_file(input_file_path, work_dir.name, output_file_path)
+    width = request.args.get('w', type=str) or ""
+    height = request.args.get('h', type=str) or ""
+
+    convert_file(input_file_path, work_dir.name, output_file_path, width, height)
 
     @after_this_request
     def cleanup(response):
